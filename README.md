@@ -41,7 +41,6 @@ class SMACStock:
     plt.title(ticker)
     plt.show()
 ```
-[The source code is available here](https://github.com/jackemcpherson/SMAC)
 
 We can now visualise the moves on the following graph. Red markers indicate a BUY signal and Black markers indicate a SELL or SHORT signal.
 
