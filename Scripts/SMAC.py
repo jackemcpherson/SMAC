@@ -13,11 +13,22 @@ class SMACStock:
         input_data = pdr.get_data_yahoo(ticker)
         signal_df = pd.DataFrame(index=input_data.index)
         signal_df["signal"] = 0.0
-        signal_df["short_mav"] = input_data["Adj Close"].rolling(window=short_lb, center=False, min_periods=1).mean()
-        signal_df["long_mav"] = input_data["Adj Close"].rolling(window=long_lb, center=False, min_periods=1).mean()
-        signal_df['signal'][short_lb:] = np.where(signal_df['short_mav'][short_lb:] > signal_df['long_mav'][short_lb:],
-                                                  1.0, 0.0)
-        signal_df['positions'] = signal_df['signal'].diff()
+        signal_df["short_mav"] = (
+            input_data["Adj Close"]
+            .rolling(window=short_lb, center=False, min_periods=1)
+            .mean()
+        )
+        signal_df["long_mav"] = (
+            input_data["Adj Close"]
+            .rolling(window=long_lb, center=False, min_periods=1)
+            .mean()
+        )
+        signal_df["signal"][short_lb:] = np.where(
+            signal_df["short_mav"][short_lb:] > signal_df["long_mav"][short_lb:],
+            1.0,
+            0.0,
+        )
+        signal_df["positions"] = signal_df["signal"].diff()
         return signal_df
 
     def plot(ticker, long_lb=120, short_lb=50, show_actual=False):
@@ -29,9 +40,19 @@ class SMACStock:
             plt1.plot(pdr.get_data_yahoo(ticker)["Adj Close"])
         else:
             pass
-        plt1.plot(signal_df.loc[signal_df.positions == -1.0].index, signal_df.short_mav[signal_df.positions == -1.0],
-                  'v', markersize=10, color='k')
-        plt1.plot(signal_df.loc[signal_df.positions == 1.0].index, signal_df.short_mav[signal_df.positions == 1.0], '^',
-                  markersize=10, color='r')
+        plt1.plot(
+            signal_df.loc[signal_df.positions == -1.0].index,
+            signal_df.short_mav[signal_df.positions == -1.0],
+            "v",
+            markersize=10,
+            color="k",
+        )
+        plt1.plot(
+            signal_df.loc[signal_df.positions == 1.0].index,
+            signal_df.short_mav[signal_df.positions == 1.0],
+            "^",
+            markersize=10,
+            color="r",
+        )
         plt.title(ticker)
         plt.show()
