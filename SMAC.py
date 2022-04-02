@@ -1,8 +1,8 @@
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import pandas_datareader as pdr
 import seaborn as sns
-import matplotlib.pyplot as plt
-import numpy as np
 
 
 class SMACStock:
