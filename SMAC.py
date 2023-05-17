@@ -62,8 +62,11 @@ class SMACStock:
 
 if __name__ == "__main__":
     ticker = input("Enter the ticker symbol: ")
-    long_lb = int(input("Enter the long lookback period: "))
-    short_lb = int(input("Enter the short lookback period: "))
+    long_lb = input("Enter the long lookback period (default is 200): ")
+    short_lb = input("Enter the short lookback period (default is 50): ")
+
+    long_lb = 200 if long_lb == "" else int(long_lb)
+    short_lb = 50 if short_lb == "" else int(short_lb)
 
     print("Choose a time range for the stock data:")
     print("1. 1 Month")
@@ -91,5 +94,6 @@ if __name__ == "__main__":
     else:
         print("Invalid choice. Defaulting to 1 year data.")
         start_date = end_date - timedelta(days=365)
+
     smac = SMACStock(ticker, start_date, end_date, long_lb=long_lb, short_lb=short_lb)
     smac.plot(show_actual=True)
