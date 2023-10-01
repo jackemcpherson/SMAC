@@ -6,7 +6,7 @@ authors = ["Jack McPherson"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = ">=3.10,<3.13"
 matplotlib = "^3.8.0"
 numpy = "^1.26.0"
 pandas = "^2.1.1"
