@@ -25,5 +25,8 @@ jobs:
       - name: Install dependencies
         run: poetry install
 
+      - name: Set PYTHONPATH (if needed)
+        run: echo "PYTHONPATH=$PYTHONPATH:$(pwd)" >> $GITHUB_ENV
+
       - name: Run tests
         run: poetry run pytest tests/
