@@ -1,5 +1,3 @@
-from datetime import datetime, timedelta
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -7,27 +5,53 @@ import seaborn as sns
 import yfinance as yf
 
 
-class SMACStock:
-    def __init__(self, ticker, start_date, end_date, long_lb=120, short_lb=50):
+class DataFetcher:
+    def __init__(self, ticker: str, start_date: str, end_date: str):
         self.ticker = ticker
+        self.start_date = start_date
+        self.end_date = end_date
+        self.data = self.fetch_data()
+
+    def fetch_data(self) -> pd.DataFrame:
+        """Fetch stock data using yfinance."""
+        return yf.download(self.ticker, start=self.start_date, end=self.end_date)
+
+    def set_time_range(self, start_date: str, end_date: str):
+        """Set time range for the data."""
+        self.start_date = start_date
+        self.end_date = end_date
+        self.data = self.fetch_data()
+
+
+class SignalCalculator:
+    def __init__(self, data: pd.DataFrame, long_lb: int = 120, short_lb: int = 50):
+        self.data = data
         self.long_lb = long_lb
         self.short_lb = short_lb
-        self.input_data = yf.download(self.ticker, start=start_date, end=end_date)
-        self.signal_df = self.calculate_signals()
+        self.signal_data = self.calculate_signals()
 
-    def calculate_signals(self):
-        signal_df = pd.DataFrame(index=self.input_data.index)
-        signal_df["signal"] = 0.0
-        signal_df["short_mav"] = (
-            self.input_data["Adj Close"]
+    def calculate_short_mav(self) -> pd.Series:
+        """Calculate short moving average."""
+        return (
+            self.data["Adj Close"]
             .rolling(window=self.short_lb, center=False, min_periods=1)
             .mean()
         )
-        signal_df["long_mav"] = (
-            self.input_data["Adj Close"]
+
+    def calculate_long_mav(self) -> pd.Series:
+        """Calculate long moving average."""
+        return (
+            self.data["Adj Close"]
             .rolling(window=self.long_lb, center=False, min_periods=1)
             .mean()
         )
+
+    def calculate_signals(self) -> pd.DataFrame:
+        """Calculate buy/sell signals based on moving averages."""
+        signal_df = pd.DataFrame(index=self.data.index)
+        signal_df["short_mav"] = self.calculate_short_mav()
+        signal_df["long_mav"] = self.calculate_long_mav()
+        signal_df["signal"] = 0.0
         signal_df["signal"][self.short_lb :] = np.where(
             signal_df["short_mav"][self.short_lb :]
             > signal_df["long_mav"][self.short_lb :],
@@ -37,68 +61,39 @@ class SMACStock:
         signal_df["positions"] = signal_df["signal"].diff()
         return signal_df
 
-    def plot(self, show_actual=False):
+
+class StockPlotter:
+    def __init__(self, data: pd.DataFrame, signal_data: pd.DataFrame):
+        self.data = data
+        self.signal_data = signal_data
+
+    def setup_plot(self):
+        """Setup plot style and size."""
         plt.figure(figsize=(12, 8))
         sns.set(context="notebook", style="darkgrid", palette="Blues_d")
-        plt1 = sns.lineplot(data=self.signal_df[["short_mav", "long_mav"]])
+
+    def plot_data(self, show_actual: bool = False):
+        """Plot stock data and signals."""
+        self.setup_plot()
+        sns.lineplot(data=self.signal_data[["short_mav", "long_mav"]])
         if show_actual:
-            plt1.plot(self.input_data["Adj Close"])
-        plt1.plot(
-            self.signal_df.loc[self.signal_df.positions == -1.0].index,
-            self.signal_df.short_mav[self.signal_df.positions == -1.0],
+            plt.plot(self.data["Adj Close"])
+        plt.plot(
+            self.signal_data.loc[self.signal_data.positions == -1.0].index,
+            self.signal_data.short_mav[self.signal_data.positions == -1.0],
             "v",
             markersize=10,
-            color="k",
         )
-        plt1.plot(
-            self.signal_df.loc[self.signal_df.positions == 1.0].index,
-            self.signal_df.short_mav[self.signal_df.positions == 1.0],
-            "^",
-            markersize=10,
-            color="r",
+
+
+class SMACStock:
+    def __init__(self, ticker: str, start_date: str, end_date: str):
+        self.data_fetcher = DataFetcher(ticker, start_date, end_date)
+        self.signal_calculator = SignalCalculator(self.data_fetcher.data)
+        self.stock_plotter = StockPlotter(
+            self.data_fetcher.data, self.signal_calculator.signal_data
         )
-        plt.title(self.ticker)
-        plt.show()
 
-
-if __name__ == "__main__":
-    ticker = input("Enter the ticker symbol: ")
-    long_lb = input("Enter the long lookback period (default is 200): ")
-    short_lb = input("Enter the short lookback period (default is 50): ")
-    show_actual = input(
-        "Display actual price? Enter 0 for No, 1 for Yes (default is Yes): "
-    )
-
-    long_lb = 200 if long_lb == "" else int(long_lb)
-    short_lb = 50 if short_lb == "" else int(short_lb)
-    show_actual = True if show_actual == "" or int(show_actual) else False
-
-    print("Choose a time range for the stock data:")
-    print("1. 1 Month")
-    print("2. 3 Months")
-    print("3. 6 Months")
-    print("4. 1 Year")
-    print("5. 3 Years")
-    print("6. 5 Years")
-
-    time_range = int(input("Enter the number corresponding to your choice: "))
-
-    end_date = datetime.now()
-    if time_range == 1:
-        start_date = end_date - timedelta(days=30)
-    elif time_range == 2:
-        start_date = end_date - timedelta(days=90)
-    elif time_range == 3:
-        start_date = end_date - timedelta(days=180)
-    elif time_range == 4:
-        start_date = end_date - timedelta(days=365)
-    elif time_range == 5:
-        start_date = end_date - timedelta(days=3 * 365)
-    elif time_range == 6:
-        start_date = end_date - timedelta(days=5 * 365)
-    else:
-        print("Invalid choice. Defaulting to 1 year data.")
-        start_date = end_date - timedelta(days=365)
-
-    smac = SMACStock(ticker, start_date, end_date, long_lb=long_lb, short_lb=short_lb)
-    smac.plot(show_actual=show_actual)
+    def run_analysis(self, show_actual: bool = False):
+        """Run the entire analysis pipeline."""
+        self.stock_plotter.plot_data(show_actual)
