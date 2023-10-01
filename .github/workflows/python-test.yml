@@ -1,34 +1,29 @@
 name: Python Test
 
 on:
-  push:
-    branches:
-      - master
   pull_request:
-    branches:
-      - master
+    branches: [master]
+  push:
+    branches: [master]
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: [3.7, 3.8, 3.9, 3.10]
 
     steps:
-      - name: Checkout repository
+      - name: Check out the code
         uses: actions/checkout@v2
 
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python 3.8
         uses: actions/setup-python@v2
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: 3.8
+
+      - name: Install Poetry
+        run: pip install poetry
 
       - name: Install dependencies
-        run: |
-          pip install --upgrade pip
-          pip install pytest
-          # Add any other dependencies your project needs
+        run: poetry install
 
-      - name: Run tests with pytest
-        run: pytest
+      - name: Run tests
+        run: poetry run pytest tests/
