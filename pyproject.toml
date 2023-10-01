@@ -6,13 +6,12 @@ authors = ["Jack McPherson"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.10"
 matplotlib = "^3.8.0"
 numpy = "^1.26.0"
 pandas = "^2.1.1"
 seaborn = "^0.13.0"
 yfinance = "^0.2.30"
-
 
 [build-system]
 requires = ["poetry-core"]
