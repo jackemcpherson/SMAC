@@ -1,3 +1,5 @@
+from typing import Optional
+
 import matplotlib.pyplot as plt
 import pandas as pd
 import yfinance as yf
@@ -9,8 +11,10 @@ class SMACAnalyzer:
         self.short_window = short_window
         self.long_window = long_window
 
-    def fetch_data(self):
-        raw_data = yf.download(self.ticker)
+    def fetch_data(
+        self, start_date: Optional[str] = None, end_date: Optional[str] = None
+    ):
+        raw_data = yf.download(self.ticker, start=start_date, end=end_date)
         self.data = raw_data[["Adj Close"]].copy()
         self.data["Adj Close"] = pd.to_numeric(self.data["Adj Close"], errors="coerce")
 
@@ -59,7 +63,7 @@ class SMACAnalyzer:
 
 if __name__ == "__main__":
     analyzer = SMACAnalyzer("AAPL", 40, 100)
-    analyzer.fetch_data()
+    analyzer.fetch_data(start_date="2020-01-01", end_date="2021-01-01")
     analyzer.calculate_sma()
     analyzer.identify_crossovers()
     analyzer.plot_data()
