@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "smac"
 version = "0.1.0"
-description = ""
+description = "A Simple Implementation of Simple Moving Average Crossover Analysis"
 authors = ["Jack McPherson"]
 readme = "README.md"
 
