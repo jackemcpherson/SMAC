@@ -1,19 +1,20 @@
-[tool.poetry]
+[project]
 name = "smac"
 version = "0.1.0"
 description = "A Simple Implementation of Simple Moving Average Crossover Analysis"
-authors = ["Jack McPherson"]
+authors = ["Jack McPherson <jackemcpherson@gmail.com>"]
 readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "matplotlib>=3.10.1",
+    "numpy>=2.2.3",
+    "pandas>=2.2.3",
+    "seaborn>=0.13.2",
+    "yfinance>=0.2.54",
+]
 
-[tool.poetry.dependencies]
-python = "^3.9.0"
-matplotlib = "^3.8.0"
-numpy = { version = "^1.26.0", python = ">=3.9.0,<3.13" }
-pandas = "^2.1.1"
-seaborn = "^0.13.0"
-yfinance = "^0.2.30"
-pytest = "^7.4.2"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+[dependency-groups]
+dev = [
+    "pytest>=8.3.5",
+    "shed>=2024.10.1",
+]
