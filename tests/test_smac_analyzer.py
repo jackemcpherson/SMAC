@@ -1,6 +1,6 @@
 import pytest
 import pandas as pd
-from SMAC import SMACAnalyzer
+from .main import SMACAnalyzer
 
 
 @pytest.fixture
