@@ -1,8 +1,9 @@
 """Tests for data fetching utilities."""
 
-import pytest
 from unittest.mock import Mock, patch
+
 import pandas as pd
+import pytest
 
 from smac.data import fetch_stock_data, validate_date_format, validate_ticker_symbol
 
@@ -48,14 +49,14 @@ class TestValidateDateFormat:
 class TestFetchStockData:
     """Tests for stock data fetching."""
 
-    @patch('smac.data.yf.download')
+    @patch("smac.data.yf.download")
     def test_successful_data_fetch(self, mock_download: Mock) -> None:
         """Test successful data fetching."""
         # Mock successful yfinance response
-        mock_data = pd.DataFrame({
-            'Adj Close': [100.0, 101.0, 102.0],
-            'Volume': [1000, 1100, 1200]
-        }, index=pd.date_range('2023-01-01', periods=3))
+        mock_data = pd.DataFrame(
+            {"Adj Close": [100.0, 101.0, 102.0], "Volume": [1000, 1100, 1200]},
+            index=pd.date_range("2023-01-01", periods=3),
+        )
         mock_download.return_value = mock_data
 
         result = fetch_stock_data("AAPL", "2023-01-01", "2023-01-03")
@@ -63,9 +64,11 @@ class TestFetchStockData:
         assert len(result) == 3
         assert "price" in result.columns
         assert result["price"].iloc[0] == 100.0
-        mock_download.assert_called_once_with("AAPL", start="2023-01-01", end="2023-01-03", progress=False)
+        mock_download.assert_called_once_with(
+            "AAPL", start="2023-01-01", end="2023-01-03", progress=False
+        )
 
-    @patch('smac.data.yf.download')
+    @patch("smac.data.yf.download")
     def test_empty_data_raises_error(self, mock_download: Mock) -> None:
         """Test that empty data raises appropriate error."""
         mock_download.return_value = pd.DataFrame()
@@ -73,13 +76,10 @@ class TestFetchStockData:
         with pytest.raises(ValueError, match="No data found for ticker AAPL"):
             fetch_stock_data("AAPL")
 
-    @patch('smac.data.yf.download')
+    @patch("smac.data.yf.download")
     def test_missing_adj_close_raises_error(self, mock_download: Mock) -> None:
         """Test that missing Adj Close column raises error."""
-        mock_data = pd.DataFrame({
-            'Close': [100.0, 101.0],
-            'Volume': [1000, 1100]
-        })
+        mock_data = pd.DataFrame({"Close": [100.0, 101.0], "Volume": [1000, 1100]})
         mock_download.return_value = mock_data
 
         with pytest.raises(ValueError, match="Expected 'Adj Close' column not found"):

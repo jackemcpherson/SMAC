@@ -125,7 +125,8 @@ def _customize_plot(ax: plt.Axes, result: SMACResult) -> None:
     ax.legend(loc="upper left", frameon=True, fancybox=True, shadow=True)
 
     fig = ax.get_figure()
-    fig.autofmt_xdate()
+    if fig is not None:
+        fig.autofmt_xdate()
 
 
 def plot_analysis(
@@ -188,12 +189,12 @@ def print_analysis_summary(result: SMACResult) -> None:
         result: SMAC analysis results.
     """
     summary = result.summary()
-    print(f"\n{'='*50}")
+    print(f"\n{'=' * 50}")
     print(f"SMAC Analysis Summary: {summary['ticker']}")
-    print(f"{'='*50}")
+    print(f"{'=' * 50}")
     print(f"Windows: {summary['short_window']}/{summary['long_window']} days")
     print(f"Period: {summary['date_range']['start']} to {summary['date_range']['end']}")
     print(f"Data Points: {summary['data_points']}")
     print(f"Buy Signals: {summary['signals']['buy']}")
     print(f"Sell Signals: {summary['signals']['sell']}")
-    print(f"{'='*50}\n")
+    print(f"{'=' * 50}\n")

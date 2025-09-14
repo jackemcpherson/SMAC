@@ -1,11 +1,12 @@
 """Tests for backward compatibility with the legacy SMACAnalyzer interface."""
 
-import pytest
-from unittest.mock import patch, Mock
-import pandas as pd
+from unittest.mock import Mock, patch
 
+import pandas as pd
+import pytest
+
+from smac.analysis import SMACConfig, SMACResult
 from smac.legacy import SMACAnalyzer
-from smac.analysis import SMACResult, SMACConfig
 
 
 class TestLegacySMACAnalyzer:
@@ -22,27 +23,34 @@ class TestLegacySMACAnalyzer:
 
     def test_initialization_validation(self) -> None:
         """Test that initialization validation still works."""
-        with pytest.raises(ValueError, match="Window periods must be positive integers"):
+        with pytest.raises(
+            ValueError, match="Window periods must be positive integers"
+        ):
             SMACAnalyzer("AAPL", -1, 50)
 
-        with pytest.raises(ValueError, match="Short window must be smaller than long window"):
+        with pytest.raises(
+            ValueError, match="Short window must be smaller than long window"
+        ):
             SMACAnalyzer("AAPL", 50, 20)
 
-    @patch('smac.legacy.run_smac_analysis')
+    @patch("smac.legacy.run_smac_analysis")
     def test_fetch_data_runs_complete_analysis(self, mock_run_analysis: Mock) -> None:
         """Test that fetch_data runs the complete modern analysis."""
         # Create mock result
         config = SMACConfig("AAPL", 20, 50)
-        sample_data = pd.DataFrame({
-            'price': [100, 101, 102],
-            'short_sma': [100, 100.5, 101],
-            'long_sma': [100, 100.2, 100.5],
-            'signal': [0, 1, 1],
-            'crossover': [0, 1, 0],
-        }, index=pd.date_range('2023-01-01', periods=3))
+        sample_data = pd.DataFrame(
+            {
+                "price": [100, 101, 102],
+                "short_sma": [100, 100.5, 101],
+                "long_sma": [100, 100.2, 100.5],
+                "signal": [0, 1, 1],
+                "crossover": [0, 1, 0],
+            },
+            index=pd.date_range("2023-01-01", periods=3),
+        )
 
-        buy_signals = sample_data[sample_data['crossover'] == 1.0]
-        sell_signals = sample_data[sample_data['crossover'] == -1.0]
+        buy_signals = sample_data[sample_data["crossover"] == 1.0]
+        sell_signals = sample_data[sample_data["crossover"] == -1.0]
 
         mock_result = SMACResult(config, sample_data, buy_signals, sell_signals)
         mock_run_analysis.return_value = mock_result
@@ -71,16 +79,23 @@ class TestLegacySMACAnalyzer:
         analyzer = SMACAnalyzer("AAPL", 20, 50)
 
         # Should raise error if called before fetch_data
-        with pytest.raises(RuntimeError, match="Data must be fetched before calculating SMAs"):
+        with pytest.raises(
+            RuntimeError, match="Data must be fetched before calculating SMAs"
+        ):
             analyzer.calculate_sma()
 
         # Mock the analysis
-        with patch('smac.legacy.run_smac_analysis') as mock_analysis:
+        with patch("smac.legacy.run_smac_analysis") as mock_analysis:
             mock_result = Mock(spec=SMACResult)
-            mock_result.data = pd.DataFrame({
-                'price': [100], 'short_sma': [100], 'long_sma': [100],
-                'signal': [0], 'crossover': [0]
-            })
+            mock_result.data = pd.DataFrame(
+                {
+                    "price": [100],
+                    "short_sma": [100],
+                    "long_sma": [100],
+                    "signal": [0],
+                    "crossover": [0],
+                }
+            )
             mock_analysis.return_value = mock_result
 
             analyzer.fetch_data()
@@ -91,32 +106,41 @@ class TestLegacySMACAnalyzer:
         analyzer = SMACAnalyzer("AAPL", 20, 50)
 
         # Should raise error if called before fetch_data
-        with pytest.raises(RuntimeError, match="SMAs must be calculated before identifying crossovers"):
+        with pytest.raises(
+            RuntimeError, match="SMAs must be calculated before identifying crossovers"
+        ):
             analyzer.identify_crossovers()
 
         # Mock the analysis
-        with patch('smac.legacy.run_smac_analysis') as mock_analysis:
+        with patch("smac.legacy.run_smac_analysis") as mock_analysis:
             mock_result = Mock(spec=SMACResult)
-            mock_result.data = pd.DataFrame({
-                'price': [100], 'short_sma': [100], 'long_sma': [100],
-                'signal': [0], 'crossover': [0]
-            })
+            mock_result.data = pd.DataFrame(
+                {
+                    "price": [100],
+                    "short_sma": [100],
+                    "long_sma": [100],
+                    "signal": [0],
+                    "crossover": [0],
+                }
+            )
             mock_analysis.return_value = mock_result
 
             analyzer.fetch_data()
             analyzer.identify_crossovers("Short_SMA")  # Should not raise error
 
-    @patch('smac.legacy.plot_analysis')
+    @patch("smac.legacy.plot_analysis")
     def test_plot_data_calls_modern_visualization(self, mock_plot: Mock) -> None:
         """Test that plot_data calls the modern visualization function."""
         analyzer = SMACAnalyzer("AAPL", 20, 50)
 
         # Should raise error if called before analysis
-        with pytest.raises(RuntimeError, match="Analysis must be completed before plotting"):
+        with pytest.raises(
+            RuntimeError, match="Analysis must be completed before plotting"
+        ):
             analyzer.plot_data()
 
         # Mock the analysis
-        with patch('smac.legacy.run_smac_analysis') as mock_analysis:
+        with patch("smac.legacy.run_smac_analysis") as mock_analysis:
             mock_result = Mock(spec=SMACResult)
             mock_result.data = pd.DataFrame()
             mock_analysis.return_value = mock_result
@@ -135,7 +159,7 @@ class TestLegacySMACAnalyzer:
         assert analyzer.result is None
 
         # Mock the analysis
-        with patch('smac.legacy.run_smac_analysis') as mock_analysis:
+        with patch("smac.legacy.run_smac_analysis") as mock_analysis:
             mock_result = Mock(spec=SMACResult)
             mock_result.data = pd.DataFrame()
             mock_analysis.return_value = mock_result

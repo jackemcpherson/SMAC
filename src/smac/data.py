@@ -61,12 +61,19 @@ def fetch_stock_data(
                 f"Expected 'Adj Close' column not found in data for {ticker}"
             )
 
-        adjusted_close_data = raw_data[["Adj Close"]].copy()
+        adjusted_close_data: pd.DataFrame = raw_data[["Adj Close"]].copy()
         adjusted_close_data.columns = ["price"]
 
-        logger.info("Successfully fetched %d data points for %s", len(data), ticker)
-        return data
+        logger.info(
+            "Successfully fetched %d data points for %s",
+            len(adjusted_close_data),
+            ticker,
+        )
+        return adjusted_close_data
 
+    except ValueError:
+        # Re-raise ValueError as-is (for validation errors)
+        raise
     except Exception as e:
         logger.error("Failed to fetch data for %s: %s", ticker, str(e))
         raise ConnectionError(f"Unable to fetch data for {ticker}: {str(e)}") from e
@@ -81,7 +88,16 @@ def validate_date_format(date_str: str) -> bool:
     Returns:
         True if date is valid, False otherwise.
     """
+    # Check exact format YYYY-MM-DD (10 characters)
+    if len(date_str) != 10:
+        return False
+
+    # Check pattern manually for strict validation
+    if not (date_str[4] == "-" and date_str[7] == "-"):
+        return False
+
     try:
+        # Additional validation that it's a real date
         datetime.strptime(date_str, "%Y-%m-%d")
         return True
     except ValueError:

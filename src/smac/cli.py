@@ -184,7 +184,8 @@ def _run_analysis(args: argparse.Namespace) -> None:
     )
 
     logger.debug(
-        "Using functional API for analysis (sma_type parameter ignored for compatibility)"
+        "Using functional API for analysis "
+        "(sma_type parameter ignored for compatibility)"
     )
     plot_analysis(result, show=True)
 

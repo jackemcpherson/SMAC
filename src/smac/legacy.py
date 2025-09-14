@@ -11,9 +11,15 @@ Classes:
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
 from smac.analysis import SMACConfig, run_smac_analysis
 from smac.visualization import plot_analysis
+
+if TYPE_CHECKING:
+    import pandas as pd
+
+    from smac.analysis import SMACResult
 
 logger = logging.getLogger(__name__)
 
@@ -43,13 +49,13 @@ class SMACAnalyzer:
             short_window=short_window,
             long_window=long_window,
         )
-        self._result = None
+        self._result: SMACResult | None = None
 
         # Legacy properties for backward compatibility
         self.ticker = self._config.ticker
         self.short_window = self._config.short_window
         self.long_window = self._config.long_window
-        self.data = None
+        self.data: pd.DataFrame | None = None
 
         logger.info(
             "Initialized legacy SMACAnalyzer for %s with windows %d/%d",
@@ -118,6 +124,6 @@ class SMACAnalyzer:
         plot_analysis(self._result, show=True)
 
     @property
-    def result(self):
+    def result(self) -> SMACResult | None:
         """Access to the modern SMACResult object."""
         return self._result
