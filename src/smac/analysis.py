@@ -133,8 +133,8 @@ def analyze_ticker(
     ticker: str,
     short_window: int = 20,
     long_window: int = 50,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
+    start_date: str | None = None,
+    end_date: str | None = None,
 ) -> SMACResult:
     """Convenience function to analyze a ticker with default parameters.
 
