@@ -1,193 +1,266 @@
-"""Command-line interface for SMAC analysis.
+"""Modern command-line interface for SMAC analysis using typer.
 
-This module provides a command-line interface that uses the modern functional
-API internally while maintaining backward compatibility with the original
-CLI arguments and behavior.
-
-Functions:
-    parse_args: Parse command line arguments
-    validate_args: Validate parsed arguments
-    main: Main CLI entry point
+This module provides a user-friendly CLI with rich output formatting,
+better error handling, and progress feedback.
 """
 
-import argparse
+from __future__ import annotations
+
 import logging
-import sys
-from datetime import datetime
+import typing
+from pathlib import Path
+from typing import Annotated
+
+import typer
+from rich.console import Console
+from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.table import Table
 
 from smac.analysis import analyze_ticker
+from smac.data import validate_date_format
 from smac.visualization import plot_analysis
 
+if typing.TYPE_CHECKING:
+    from smac.analysis import SMACResult
+
+app = typer.Typer(
+    name="smac",
+    help="🔍 Simple Moving Average Crossover (SMAC) Analysis Tool",
+    add_completion=False,
+)
+
+console = Console()
 logger = logging.getLogger(__name__)
 
 
-def parse_args() -> argparse.Namespace:
-    """Parse command line arguments.
+def version_callback(value: bool) -> None:
+    """Show version information."""
+    if value:
+        from smac import __version__
+        console.print(f"SMAC version: [bold cyan]{__version__}[/bold cyan]")
+        raise typer.Exit()
 
-    Returns:
-        Parsed command line arguments.
+
+@app.command()
+def analyze(
+    ticker: Annotated[
+        str,
+        typer.Argument(
+            help="Stock ticker symbol (e.g., AAPL, MSFT, GOOGL)",
+            show_default=False,
+        ),
+    ],
+    short_window: Annotated[
+        int,
+        typer.Option(
+            "--short-window",
+            "-s",
+            help="Short-term moving average window period",
+            min=1,
+            max=200,
+        ),
+    ] = 20,
+    long_window: Annotated[
+        int,
+        typer.Option(
+            "--long-window",
+            "-l",
+            help="Long-term moving average window period",
+            min=2,
+            max=500,
+        ),
+    ] = 50,
+    start_date: Annotated[
+        str | None,
+        typer.Option(
+            "--start-date",
+            "-f",
+            help="Start date for analysis (YYYY-MM-DD format). Defaults to 1 year ago.",
+        ),
+    ] = None,
+    end_date: Annotated[
+        str | None,
+        typer.Option(
+            "--end-date",
+            "-t",
+            help="End date for analysis (YYYY-MM-DD format). Defaults to today.",
+        ),
+    ] = None,
+    save_path: Annotated[
+        str | None,
+        typer.Option(
+            "--save",
+            "-o",
+            help="Path to save the analysis chart (optional)",
+        ),
+    ] = None,
+    verbose: Annotated[
+        bool,
+        typer.Option(
+            "--verbose",
+            "-v",
+            help="Enable verbose logging output",
+        ),
+    ] = False,
+    version: Annotated[
+        bool | None,
+        typer.Option(
+            "--version",
+            callback=version_callback,
+            is_eager=True,
+            help="Show version information",
+        ),
+    ] = None,
+) -> None:
+    """Analyze stock price trends using Simple Moving Average Crossover strategy.
+
+    This tool fetches stock data and identifies buy/sell signals based on
+    short and long-term moving average crossovers.
     """
-    parser = argparse.ArgumentParser(
-        description="Simple Moving Average Crossover (SMAC) Analysis"
-    )
+    _setup_logging(verbose)
 
-    parser.add_argument(
-        "ticker", type=str, help="Stock ticker symbol (e.g., AAPL, MSFT, GOOG)"
-    )
+    # Validate inputs
+    ticker = ticker.upper().strip()
+    if not ticker:
+        console.print("[red]❌ Error: Ticker symbol cannot be empty[/red]")
+        raise typer.Exit(code=1)
 
-    parser.add_argument(
-        "--short-window",
-        "-s",
-        type=int,
-        default=20,
-        help="Short window period for SMA calculation (default: 20)",
-    )
-
-    parser.add_argument(
-        "--long-window",
-        "-l",
-        type=int,
-        default=50,
-        help="Long window period for SMA calculation (default: 50)",
-    )
-
-    parser.add_argument(
-        "--start-date",
-        type=str,
-        help="Start date for analysis (format: YYYY-MM-DD, default: 1 year ago)",
-    )
-
-    parser.add_argument(
-        "--end-date",
-        type=str,
-        help="End date for analysis (format: YYYY-MM-DD, default: today)",
-    )
-
-    parser.add_argument(
-        "--sma-type",
-        type=str,
-        default="Short_SMA",
-        choices=["Short_SMA", "Long_SMA"],
-        help="SMA type to use for crossover identification (default: Short_SMA)",
-    )
-
-    return parser.parse_args()
-
-
-def validate_args(args: argparse.Namespace) -> bool:
-    """Validate command line arguments.
-
-    Args:
-        args: Parsed command line arguments.
-
-    Returns:
-        True if all arguments are valid, False otherwise.
-    """
-    if args.short_window <= 0:
-        logger.error(
-            "Short window must be a positive integer, got: %d", args.short_window
+    if short_window >= long_window:
+        console.print(
+            f"[red]❌ Error: Short window ({short_window}) must be smaller than "
+            f"long window ({long_window})[/red]"
         )
-        print("Error: Short window must be a positive integer")
-        return False
+        raise typer.Exit(code=1)
 
-    if args.long_window <= 0:
-        logger.error(
-            "Long window must be a positive integer, got: %d", args.long_window
-        )
-        print("Error: Long window must be a positive integer")
-        return False
+    # Validate dates
+    if start_date and not validate_date_format(start_date):
+        console.print("[red]❌ Error: Start date must be in YYYY-MM-DD format[/red]")
+        raise typer.Exit(code=1)
 
-    if args.short_window >= args.long_window:
-        logger.error(
-            "Short window (%d) must be smaller than long window (%d)",
-            args.short_window,
-            args.long_window,
-        )
-        print("Error: Short window must be smaller than long window")
-        return False
+    if end_date and not validate_date_format(end_date):
+        console.print("[red]❌ Error: End date must be in YYYY-MM-DD format[/red]")
+        raise typer.Exit(code=1)
 
-    if args.start_date and not _is_valid_date(args.start_date):
-        logger.error("Invalid start date format: %s", args.start_date)
-        print("Error: Start date must be in YYYY-MM-DD format")
-        return False
+    # Show analysis configuration
+    _show_analysis_config(ticker, short_window, long_window, start_date, end_date)
 
-    if args.end_date and not _is_valid_date(args.end_date):
-        logger.error("Invalid end date format: %s", args.end_date)
-        print("Error: End date must be in YYYY-MM-DD format")
-        return False
-
-    return True
-
-
-def _is_valid_date(date_string: str) -> bool:
-    """Check if date string is in valid YYYY-MM-DD format.
-
-    Args:
-        date_string: Date string to validate.
-
-    Returns:
-        True if valid date format, False otherwise.
-    """
     try:
-        datetime.strptime(date_string, "%Y-%m-%d")
-        return True
-    except ValueError:
-        return False
+        # Run analysis with progress indicator
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=console,
+            transient=True,
+        ) as progress:
+            task = progress.add_task(
+                "Fetching data and running analysis...", total=None
+            )
+
+            result = analyze_ticker(
+                ticker=ticker,
+                short_window=short_window,
+                long_window=long_window,
+                start_date=start_date,
+                end_date=end_date,
+            )
+
+            progress.update(task, description="Generating visualization...")
+            plot_analysis(result, save_path=save_path, show=True)
+
+        # Show results summary
+        _show_results_summary(result, save_path)
+
+        console.print("\n[green]✅ Analysis completed successfully![/green]")
+        logger.info("SMAC analysis completed successfully for %s", ticker)
+
+    except ValueError as e:
+        console.print(f"[red]❌ Data Error: {e}[/red]")
+        logger.error("Data error during analysis: %s", str(e))
+        raise typer.Exit(code=1) from None
+
+    except ConnectionError as e:
+        console.print(f"[red]❌ Connection Error: {e}[/red]")
+        logger.error("Connection error during analysis: %s", str(e))
+        raise typer.Exit(code=1) from None
+
+    except Exception as e:
+        console.print(f"[red]❌ Unexpected Error: {e}[/red]")
+        logger.error("Unexpected error during analysis: %s", str(e))
+        raise typer.Exit(code=1) from None
+
+
+def _setup_logging(verbose: bool) -> None:
+    """Configure logging for the CLI application.
+
+    Args:
+        verbose: Enable verbose logging if True.
+    """
+    log_level = logging.DEBUG if verbose else logging.INFO
+    logs_dir = Path("logs")
+    logs_dir.mkdir(exist_ok=True)
+
+    logging.basicConfig(
+        level=log_level,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=[
+            logging.FileHandler(logs_dir / "smac_cli.log"),
+            logging.StreamHandler() if verbose else logging.NullHandler(),
+        ],
+    )
+
+    logger.info("Starting SMAC CLI analysis")
+
+
+def _show_analysis_config(
+    ticker: str,
+    short_window: int,
+    long_window: int,
+    start_date: str | None,
+    end_date: str | None,
+) -> None:
+    """Display analysis configuration in a nice table.
+
+    Args:
+        ticker: Stock ticker symbol.
+        short_window: Short-term window period.
+        long_window: Long-term window period.
+        start_date: Analysis start date.
+        end_date: Analysis end date.
+    """
+    table = Table(title=f"📊 SMAC Analysis Configuration for {ticker}")
+    table.add_column("Parameter", style="cyan")
+    table.add_column("Value", style="bold")
+
+    table.add_row("Ticker Symbol", ticker)
+    table.add_row("Short Window", f"{short_window} days")
+    table.add_row("Long Window", f"{long_window} days")
+    table.add_row("Start Date", start_date or "1 year ago")
+    table.add_row("End Date", end_date or "Today")
+
+    console.print("\n")
+    console.print(table)
+    console.print("")
+
+
+def _show_results_summary(result: SMACResult, save_path: str | None = None) -> None:
+    """Show analysis results summary.
+
+    Args:
+        result: SMAC analysis result object.
+        save_path: Path where chart was saved, if any.
+    """
+    from smac.visualization import print_analysis_summary
+
+    # Use the existing summary function
+    print_analysis_summary(result)
+
+    if save_path:
+        console.print(f"📁 Chart saved to: [cyan]{save_path}[/cyan]")
 
 
 def main() -> None:
-    """Main function to run the SMAC analysis from command line."""
-    _setup_logging()
-    logger.info("Starting SMAC CLI analysis")
-
-    args = parse_args()
-
-    if not validate_args(args):
-        logger.error("Argument validation failed")
-        sys.exit(1)
-
-    try:
-        _run_analysis(args)
-        logger.info("SMAC analysis completed successfully")
-
-    except Exception as e:
-        logger.error("Analysis failed: %s", str(e))
-        print(f"Error: {e}")
-        sys.exit(1)
-
-
-def _setup_logging() -> None:
-    """Configure logging for the CLI application."""
-    import os
-
-    os.makedirs("logs", exist_ok=True)
-
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        handlers=[logging.FileHandler("logs/smac_cli.log"), logging.StreamHandler()],
-    )
-
-
-def _run_analysis(args: argparse.Namespace) -> None:
-    """Execute the complete SMAC analysis workflow.
-
-    Args:
-        args: Command line arguments.
-    """
-    result = analyze_ticker(
-        ticker=args.ticker,
-        short_window=args.short_window,
-        long_window=args.long_window,
-        start_date=args.start_date,
-        end_date=args.end_date,
-    )
-
-    logger.debug(
-        "Using functional API for analysis "
-        "(sma_type parameter ignored for compatibility)"
-    )
-    plot_analysis(result, show=True)
+    """Entry point for the CLI application."""
+    app()
 
 
 if __name__ == "__main__":
