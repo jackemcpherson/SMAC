@@ -3,7 +3,7 @@
 import pandas as pd
 import pytest
 
-from smac.analyzer import SMACAnalyzer
+from smac import SMACAnalyzer
 
 
 @pytest.fixture

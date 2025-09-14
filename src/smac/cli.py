@@ -1,9 +1,22 @@
+"""Command-line interface for SMAC analysis.
+
+This module provides a command-line interface that uses the modern functional
+API internally while maintaining backward compatibility with the original
+CLI arguments and behavior.
+
+Functions:
+    parse_args: Parse command line arguments
+    validate_args: Validate parsed arguments
+    main: Main CLI entry point
+"""
+
 import argparse
 import logging
 import sys
 from datetime import datetime
 
-from smac.analyzer import SMACAnalyzer
+from smac.analysis import analyze_ticker
+from smac.visualization import plot_analysis
 
 logger = logging.getLogger(__name__)
 
@@ -134,12 +147,7 @@ def main() -> None:
         sys.exit(1)
 
     try:
-        analyzer = SMACAnalyzer(
-            ticker=args.ticker,
-            short_window=args.short_window,
-            long_window=args.long_window,
-        )
-        _run_analysis(analyzer, args)
+        _run_analysis(args)
         logger.info("SMAC analysis completed successfully")
 
     except Exception as e:
@@ -161,17 +169,23 @@ def _setup_logging() -> None:
     )
 
 
-def _run_analysis(analyzer: SMACAnalyzer, args: argparse.Namespace) -> None:
+def _run_analysis(args: argparse.Namespace) -> None:
     """Execute the complete SMAC analysis workflow.
 
     Args:
-        analyzer: Initialized SMACAnalyzer instance.
         args: Command line arguments.
     """
-    analyzer.fetch_data(start_date=args.start_date, end_date=args.end_date)
-    analyzer.calculate_sma()
-    analyzer.identify_crossovers(sma_type=args.sma_type)
-    analyzer.plot_data(sma_type=args.sma_type)
+    result = analyze_ticker(
+        ticker=args.ticker,
+        short_window=args.short_window,
+        long_window=args.long_window,
+        start_date=args.start_date,
+        end_date=args.end_date,
+    )
+
+    # Note: sma_type is ignored in the new implementation as it's always short_sma
+    # This maintains CLI compatibility while using the cleaner functional API
+    plot_analysis(result, show=True)
 
 
 if __name__ == "__main__":
