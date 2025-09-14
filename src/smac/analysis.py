@@ -15,7 +15,6 @@ Functions:
 
 import logging
 from dataclasses import dataclass
-from typing import Optional
 
 import pandas as pd
 
@@ -32,8 +31,8 @@ class SMACConfig:
     ticker: str
     short_window: int
     long_window: int
-    start_date: Optional[str] = None
-    end_date: Optional[str] = None
+    start_date: str | None = None
+    end_date: str | None = None
 
     def __post_init__(self) -> None:
         """Validate configuration after initialization."""
@@ -106,16 +105,10 @@ def run_smac_analysis(config: SMACConfig) -> SMACResult:
         config.long_window,
     )
 
-    # Fetch stock data
     stock_data = fetch_stock_data(config.ticker, config.start_date, config.end_date)
-
-    # Calculate SMAs
     sma_data = calculate_dual_sma(stock_data, config.short_window, config.long_window)
-
-    # Identify crossover signals
     analysis_data = identify_crossover_signals(sma_data)
 
-    # Extract signal points
     buy_signals = analysis_data[analysis_data["crossover"] == 1.0].copy()
     sell_signals = analysis_data[analysis_data["crossover"] == -1.0].copy()
 

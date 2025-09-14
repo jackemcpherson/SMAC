@@ -183,8 +183,9 @@ def _run_analysis(args: argparse.Namespace) -> None:
         end_date=args.end_date,
     )
 
-    # Note: sma_type is ignored in the new implementation as it's always short_sma
-    # This maintains CLI compatibility while using the cleaner functional API
+    logger.debug(
+        "Using functional API for analysis (sma_type parameter ignored for compatibility)"
+    )
     plot_analysis(result, show=True)
 
 

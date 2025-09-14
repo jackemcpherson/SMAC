@@ -61,9 +61,8 @@ def fetch_stock_data(
                 f"Expected 'Adj Close' column not found in data for {ticker}"
             )
 
-        # Return clean DataFrame with just adjusted close prices
-        data = raw_data[["Adj Close"]].copy()
-        data.columns = ["price"]
+        adjusted_close_data = raw_data[["Adj Close"]].copy()
+        adjusted_close_data.columns = ["price"]
 
         logger.info("Successfully fetched %d data points for %s", len(data), ticker)
         return data
