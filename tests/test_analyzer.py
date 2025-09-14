@@ -1,7 +1,6 @@
 import pytest
 import pandas as pd
-from .main import SMACAnalyzer
-
+from smac.analyzer import SMACAnalyzer
 
 @pytest.fixture
 def sample_analyzer():

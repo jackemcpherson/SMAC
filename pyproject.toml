@@ -2,7 +2,9 @@
 name = "smac"
 version = "0.1.0"
 description = "A Simple Implementation of Simple Moving Average Crossover Analysis"
-authors = ["Jack McPherson <jackemcpherson@gmail.com>"]
+authors = [
+    {name = "Jack McPherson", email = "jackemcpherson@gmail.com"}
+]
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
