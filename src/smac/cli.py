@@ -1,124 +1,178 @@
 import argparse
-from datetime import datetime
+import logging
 import sys
+from datetime import datetime
 
 from smac.analyzer import SMACAnalyzer
 
+logger = logging.getLogger(__name__)
 
-def parse_args():
-    """Parse command line arguments."""
+
+def parse_args() -> argparse.Namespace:
+    """Parse command line arguments.
+
+    Returns:
+        Parsed command line arguments.
+    """
     parser = argparse.ArgumentParser(
         description="Simple Moving Average Crossover (SMAC) Analysis"
     )
-    
+
     parser.add_argument(
-        "ticker",
-        type=str,
-        help="Stock ticker symbol (e.g., AAPL, MSFT, GOOG)"
+        "ticker", type=str, help="Stock ticker symbol (e.g., AAPL, MSFT, GOOG)"
     )
-    
+
     parser.add_argument(
-        "--short-window", "-s",
+        "--short-window",
+        "-s",
         type=int,
         default=20,
-        help="Short window period for SMA calculation (default: 20)"
+        help="Short window period for SMA calculation (default: 20)",
     )
-    
+
     parser.add_argument(
-        "--long-window", "-l",
+        "--long-window",
+        "-l",
         type=int,
         default=50,
-        help="Long window period for SMA calculation (default: 50)"
+        help="Long window period for SMA calculation (default: 50)",
     )
-    
+
     parser.add_argument(
         "--start-date",
         type=str,
-        help="Start date for analysis (format: YYYY-MM-DD, default: 1 year ago)"
+        help="Start date for analysis (format: YYYY-MM-DD, default: 1 year ago)",
     )
-    
+
     parser.add_argument(
         "--end-date",
         type=str,
-        help="End date for analysis (format: YYYY-MM-DD, default: today)"
+        help="End date for analysis (format: YYYY-MM-DD, default: today)",
     )
-    
+
     parser.add_argument(
         "--sma-type",
         type=str,
         default="Short_SMA",
         choices=["Short_SMA", "Long_SMA"],
-        help="SMA type to use for crossover identification (default: Short_SMA)"
+        help="SMA type to use for crossover identification (default: Short_SMA)",
     )
-    
+
     return parser.parse_args()
 
 
-def validate_args(args):
-    """Validate command line arguments."""
-    # Validate short and long window values
+def validate_args(args: argparse.Namespace) -> bool:
+    """Validate command line arguments.
+
+    Args:
+        args: Parsed command line arguments.
+
+    Returns:
+        True if all arguments are valid, False otherwise.
+    """
     if args.short_window <= 0:
+        logger.error(
+            "Short window must be a positive integer, got: %d", args.short_window
+        )
         print("Error: Short window must be a positive integer")
         return False
-    
+
     if args.long_window <= 0:
+        logger.error(
+            "Long window must be a positive integer, got: %d", args.long_window
+        )
         print("Error: Long window must be a positive integer")
         return False
-    
+
     if args.short_window >= args.long_window:
+        logger.error(
+            "Short window (%d) must be smaller than long window (%d)",
+            args.short_window,
+            args.long_window,
+        )
         print("Error: Short window must be smaller than long window")
         return False
-    
-    # Validate date formats if provided
-    if args.start_date:
-        try:
-            datetime.strptime(args.start_date, "%Y-%m-%d")
-        except ValueError:
-            print("Error: Start date must be in YYYY-MM-DD format")
-            return False
-    
-    if args.end_date:
-        try:
-            datetime.strptime(args.end_date, "%Y-%m-%d")
-        except ValueError:
-            print("Error: End date must be in YYYY-MM-DD format")
-            return False
-    
+
+    if args.start_date and not _is_valid_date(args.start_date):
+        logger.error("Invalid start date format: %s", args.start_date)
+        print("Error: Start date must be in YYYY-MM-DD format")
+        return False
+
+    if args.end_date and not _is_valid_date(args.end_date):
+        logger.error("Invalid end date format: %s", args.end_date)
+        print("Error: End date must be in YYYY-MM-DD format")
+        return False
+
     return True
 
 
-def main():
-    """Main function to run the SMAC analysis from command line."""
-    args = parse_args()
-    
-    if not validate_args(args):
-        sys.exit(1)
-    
-    # Initialize the analyzer
-    analyzer = SMACAnalyzer(
-        ticker=args.ticker,
-        short_window=args.short_window,
-        long_window=args.long_window
-    )
-    
+def _is_valid_date(date_string: str) -> bool:
+    """Check if date string is in valid YYYY-MM-DD format.
+
+    Args:
+        date_string: Date string to validate.
+
+    Returns:
+        True if valid date format, False otherwise.
+    """
     try:
-        # Fetch data
-        analyzer.fetch_data(start_date=args.start_date, end_date=args.end_date)
-        
-        # Calculate SMAs
-        analyzer.calculate_sma()
-        
-        # Identify crossovers
-        analyzer.identify_crossovers(sma_type=args.sma_type)
-        
-        # Plot the data
-        analyzer.plot_data(sma_type=args.sma_type)
-        
+        datetime.strptime(date_string, "%Y-%m-%d")
+        return True
+    except ValueError:
+        return False
+
+
+def main() -> None:
+    """Main function to run the SMAC analysis from command line."""
+    _setup_logging()
+    logger.info("Starting SMAC CLI analysis")
+
+    args = parse_args()
+
+    if not validate_args(args):
+        logger.error("Argument validation failed")
+        sys.exit(1)
+
+    try:
+        analyzer = SMACAnalyzer(
+            ticker=args.ticker,
+            short_window=args.short_window,
+            long_window=args.long_window,
+        )
+        _run_analysis(analyzer, args)
+        logger.info("SMAC analysis completed successfully")
+
     except Exception as e:
+        logger.error("Analysis failed: %s", str(e))
         print(f"Error: {e}")
         sys.exit(1)
 
 
+def _setup_logging() -> None:
+    """Configure logging for the CLI application."""
+    import os
+
+    os.makedirs("logs", exist_ok=True)
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=[logging.FileHandler("logs/smac_cli.log"), logging.StreamHandler()],
+    )
+
+
+def _run_analysis(analyzer: SMACAnalyzer, args: argparse.Namespace) -> None:
+    """Execute the complete SMAC analysis workflow.
+
+    Args:
+        analyzer: Initialized SMACAnalyzer instance.
+        args: Command line arguments.
+    """
+    analyzer.fetch_data(start_date=args.start_date, end_date=args.end_date)
+    analyzer.calculate_sma()
+    analyzer.identify_crossovers(sma_type=args.sma_type)
+    analyzer.plot_data(sma_type=args.sma_type)
+
+
 if __name__ == "__main__":
     main()
-
