@@ -3,7 +3,7 @@ requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
 
 [project]
-name = "smac"
+name = "smac-analysis"
 dynamic = ["version"]
 description = "A Simple Implementation of Simple Moving Average Crossover Analysis"
 readme = "README.md"
