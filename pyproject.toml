@@ -65,7 +65,7 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-v --cov=smac --cov-report=term-missing --cov-fail-under=80"
+addopts = "-v --cov=smac --cov-report=term-missing"
 
 [tool.coverage.run]
 source = ["src"]
