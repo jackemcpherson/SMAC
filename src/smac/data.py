@@ -12,10 +12,14 @@ Functions:
 from __future__ import annotations
 
 import logging
+import sys
+from contextlib import redirect_stderr
 from datetime import datetime
+from io import StringIO
 
 import pandas as pd
 import yfinance as yf
+from yfinance.exceptions import YFRateLimitError
 
 logger = logging.getLogger(__name__)
 
@@ -56,13 +60,27 @@ def fetch_stock_data(
         if raw_data.empty:
             raise ValueError(f"No data found for ticker {ticker}")
 
-        if "Adj Close" not in raw_data.columns:
-            raise ValueError(
-                f"Expected 'Adj Close' column not found in data for {ticker}"
-            )
-
-        adjusted_close_data: pd.DataFrame = raw_data[["Adj Close"]].copy()
-        adjusted_close_data.columns = ["price"]
+        # Handle MultiIndex columns (new yfinance format)
+        if isinstance(raw_data.columns, pd.MultiIndex):
+            # Look for Close column (auto_adjust=True means Close is already adjusted)
+            close_cols = [col for col in raw_data.columns if col[0] == "Close"]
+            if not close_cols:
+                raise ValueError(
+                    f"Expected 'Close' column not found in data for {ticker}"
+                )
+            adjusted_close_data: pd.DataFrame = raw_data[close_cols].copy()
+            adjusted_close_data.columns = ["price"]
+        else:
+            # Handle single-level columns (legacy format)
+            if "Close" in raw_data.columns:
+                adjusted_close_data: pd.DataFrame = raw_data[["Close"]].copy()
+            elif "Adj Close" in raw_data.columns:
+                adjusted_close_data: pd.DataFrame = raw_data[["Adj Close"]].copy()
+            else:
+                raise ValueError(
+                    f"Expected 'Close' or 'Adj Close' column not found in data for {ticker}"
+                )
+            adjusted_close_data.columns = ["price"]
 
         logger.info(
             "Successfully fetched %d data points for %s",
@@ -71,8 +89,13 @@ def fetch_stock_data(
         )
         return adjusted_close_data
 
-    except ValueError:
-        # Re-raise ValueError as-is (for validation errors)
+    except YFRateLimitError as e:
+        logger.warning("Rate limited by Yahoo Finance for %s", ticker)
+        raise ConnectionError(
+            "Rate limited by Yahoo Finance. Please wait a moment and try again."
+        ) from e
+    except (ValueError, ConnectionError):
+        # Re-raise ValueError and ConnectionError as-is
         raise
     except Exception as e:
         logger.error("Failed to fetch data for %s: %s", ticker, str(e))
