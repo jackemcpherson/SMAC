@@ -75,7 +75,8 @@ def fetch_stock_data(
                 adjusted_close_data: pd.DataFrame = raw_data[["Adj Close"]].copy()
             else:
                 raise ValueError(
-                    f"Expected 'Close' or 'Adj Close' column not found in data for {ticker}"
+                    f"Expected 'Close' or 'Adj Close' column not found in data for "
+                    f"{ticker}"
                 )
             adjusted_close_data.columns = ["price"]
 

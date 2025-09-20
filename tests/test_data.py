@@ -52,7 +52,7 @@ class TestFetchStockData:
 
     @patch("smac.data.yf.download")
     def test_successful_data_fetch_multiindex(self, mock_download: Mock) -> None:
-        """Test successful data fetching with MultiIndex columns (new yfinance format)."""
+        """Test successful data fetching with MultiIndex columns (new format)."""
         # Mock MultiIndex response (new yfinance format)
         columns = pd.MultiIndex.from_tuples([
             ("Close", "AAPL"), ("Volume", "AAPL")
@@ -90,7 +90,9 @@ class TestFetchStockData:
         assert result["price"].iloc[0] == 100.0
 
     @patch("smac.data.yf.download")
-    def test_successful_data_fetch_adj_close_fallback(self, mock_download: Mock) -> None:
+    def test_successful_data_fetch_adj_close_fallback(
+        self, mock_download: Mock
+    ) -> None:
         """Test successful data fetching with Adj Close fallback."""
         # Mock legacy response with Adj Close
         mock_data = pd.DataFrame(
@@ -119,7 +121,9 @@ class TestFetchStockData:
         mock_data = pd.DataFrame({"Open": [100.0, 101.0], "Volume": [1000, 1100]})
         mock_download.return_value = mock_data
 
-        with pytest.raises(ValueError, match="Expected 'Close' or 'Adj Close' column not found"):
+        with pytest.raises(
+            ValueError, match="Expected 'Close' or 'Adj Close' column not found"
+        ):
             fetch_stock_data("AAPL")
 
     @patch("smac.data.yf.download")
