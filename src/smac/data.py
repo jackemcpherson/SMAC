@@ -65,14 +65,14 @@ def fetch_stock_data(
                 raise ValueError(
                     f"Expected 'Close' column not found in data for {ticker}"
                 )
-            adjusted_close_data: pd.DataFrame = raw_data[close_cols].copy()
+            adjusted_close_data = raw_data[close_cols].copy()
             adjusted_close_data.columns = ["price"]
         else:
             # Handle single-level columns (legacy format)
             if "Close" in raw_data.columns:
-                adjusted_close_data: pd.DataFrame = raw_data[["Close"]].copy()
+                adjusted_close_data = raw_data[["Close"]].copy()
             elif "Adj Close" in raw_data.columns:
-                adjusted_close_data: pd.DataFrame = raw_data[["Adj Close"]].copy()
+                adjusted_close_data = raw_data[["Adj Close"]].copy()
             else:
                 raise ValueError(
                     f"Expected 'Close' or 'Adj Close' column not found in data for "
@@ -85,7 +85,7 @@ def fetch_stock_data(
             len(adjusted_close_data),
             ticker,
         )
-        return adjusted_close_data
+        return adjusted_close_data  # type: ignore[no-any-return]
 
     except YFRateLimitError as e:
         logger.warning("Rate limited by Yahoo Finance for %s", ticker)
